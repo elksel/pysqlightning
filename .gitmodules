@@ -1,0 +1,3 @@
+[submodule "sqlightning"]
+	path = sqlightning
+	url = https://github.com/andrewleech/sqlightning
