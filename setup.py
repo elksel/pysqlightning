@@ -25,7 +25,8 @@ import glob, os, re, sys
 import urllib
 import zipfile
 
-from distutils.core import setup, Extension, Command
+# from distutils.core import setup, Extension, Command
+from setuptools import setup, Extension, Command
 from distutils.command.build import build
 from distutils.command.build_ext import build_ext
 from distutils.spawn import find_executable
@@ -98,14 +99,23 @@ class AmalgamationBuilder(build):
     def _amalgamate_sqlightning(self):
         # TODO python 3
         import platform
-        vcvarsall = r'%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
-        if not os.path.exists(os.path.expandvars(vcvarsall)):
-            vcvarsall = r'%COMMONPROGRAMFILES(X86)%\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
-        if not os.path.exists(os.path.expandvars(vcvarsall)):
-            raise Exception('"Visual C++ for Python" not found')
-        
-        vcvars_cmd_x64 = r'call "%s" x64' %(vcvarsall)
-        vcvars_cmd_x86 = vcvars_cmd_x64 + r' && call "%s" x86' %(vcvarsall) # run vcvars_cmd_x64 first to get vcbuild.exe
+        if platform.python_version_tuple() >= ('3','0','0'):
+            if not find_executable("nmake"):
+                vcvarsall = r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat'
+                vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
+                vcvars_cmd_x86 = r'call "%s" x86 &&' %(vcvarsall)
+            else:
+                vcvars_cmd_x64 = ""
+                vcvars_cmd_x86 = ""
+        else:
+            vcvarsall = r'%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+            if not os.path.exists(os.path.expandvars(vcvarsall)):
+                vcvarsall = r'%COMMONPROGRAMFILES(X86)%\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+            if not os.path.exists(os.path.expandvars(vcvarsall)):
+                raise Exception('"Visual C++ for Python" not found')
+            
+            vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
+            vcvars_cmd_x86 = vcvars_cmd_x64 + r' && call "%s" x86 &&' %(vcvarsall) # run vcvars_cmd_x64 first to get vcbuild.exe
         
         # Check for tcl
         if not find_executable("tclsh85"):
@@ -118,7 +128,7 @@ class AmalgamationBuilder(build):
                 vcvars_cmd = vcvars_cmd_x86
             else:
                 vcvars_cmd = vcvars_cmd_x64
-            os.system("%s && nmake /f makefile.msc sqlite3.c" % vcvars_cmd)
+            os.system("%s nmake /f makefile.msc sqlite3.c" % vcvars_cmd)
         else:
             os.system("sh configure && make sqlite3.c")
         os.chdir(currdir)
@@ -167,25 +177,25 @@ def get_setup_args():
 
     py_modules = ["sqlite"]
     setup_args = dict(
-            name = "pysqlite",
+            name = "pysqlightning",
             version = PYSQLITE_VERSION,
-            description = "DB-API 2.0 interface for SQLite 3.x",
+            description = "DB-API 2.0 interface for SQLightning",
             long_description=long_description,
-            author = "Gerhard Haering",
-            author_email = "gh@ghaering.de",
-            license = "zlib/libpng license",
+            author = "Andrew Leech",
+            author_email = "andrew@alelec.net",
+            license = "The OpenLDAP Public License Version 2.8, 17 August 2003",
             platforms = "ALL",
-            url = "http://pysqlite.googlecode.com/",
-            download_url = "http://code.google.com/p/pysqlite/downloads/list",
+            url = "https://github.com/andrewleech/pysqlightning",
+            download_url = "https://pypi.python.org/pypi/pysqlightning",
 
             # Description of the modules and packages in the distribution
-            package_dir = {"pysqlite2": "lib"},
-            packages = ["pysqlite2", "pysqlite2.test"] +
-                       (["pysqlite2.test.py25"], [])[sys.version_info < (2, 5)],
+            package_dir = {"pysqlightning": "lib"},
+            packages = ["pysqlightning", "pysqlightning.test"] +
+                       (["pysqlightning.test.py25"], [])[sys.version_info < (2, 5)],
             scripts=[],
             data_files = data_files,
 
-            ext_modules = [Extension( name="pysqlite2._sqlite",
+            ext_modules = [Extension( name="pysqlightning._sqlite",
                                       sources=sources,
                                       include_dirs=include_dirs,
                                       library_dirs=library_dirs,
