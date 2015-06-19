@@ -24,6 +24,7 @@
 import glob, os, re, sys
 import urllib
 import zipfile
+import six
 
 # from distutils.core import setup, Extension, Command
 from setuptools import setup, Extension, Command
@@ -86,7 +87,7 @@ class DocBuilder(Command):
         os.makedirs("build/doc")
         rc = os.system("sphinx-build doc/sphinx build/doc")
         if rc != 0:
-            print "Is sphinx installed? If not, try 'sudo easy_install sphinx'."
+            six.print_("Is sphinx installed? If not, try 'sudo easy_install sphinx'.")
 
 class AmalgamationBuilder(build):
     description = "Build a statically built pysqlite using the amalgamtion."
@@ -165,7 +166,7 @@ def get_setup_args():
     f.close()
 
     if not PYSQLITE_VERSION:
-        print "Fatal error: PYSQLITE_VERSION could not be detected!"
+        six.print_("Fatal error: PYSQLITE_VERSION could not be detected!")
         sys.exit(1)
 
     data_files = [("pysqlite2-doc",
