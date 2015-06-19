@@ -40,12 +40,14 @@ PYSQLITE_EXPERIMENTAL = False
 
 sources = ["src/module.c", "src/connection.c", "src/cursor.c", "src/cache.c",
            "src/microprotocols.c", "src/prepare_protocol.c", "src/statement.c",
-           "src/util.c", "src/row.c", "sqlightning/sqlite3.c"]
+           "src/util.c", "src/row.c"]
 
 if PYSQLITE_EXPERIMENTAL:
     sources.append("src/backup.c")
 
-include_dirs = ["sqlightning"]
+include_dirs = ["sqlightning", "lmdb/libraries/liblmdb"]
+if sys.platform == "win32":
+    include_dirs.append("msinttypes-r26")
 library_dirs = []
 libraries = []
 runtime_library_dirs = []
@@ -129,7 +131,7 @@ class MyBuildExt(build_ext):
         if self.amalgamation:
             ext.define_macros.append(("SQLITE_ENABLE_FTS3", "1"))   # build with fulltext search enabled
             ext.define_macros.append(("SQLITE_ENABLE_RTREE", "1"))   # build with fulltext search enabled
-            ext.sources.append("sqlite3.c")
+            ext.sources.append("sqlightning/sqlite3.c")
         build_ext.build_extension(self, ext)
 
     def __setattr__(self, k, v):
