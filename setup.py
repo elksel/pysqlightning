@@ -28,6 +28,7 @@ import zipfile
 from distutils.core import setup, Extension, Command
 from distutils.command.build import build
 from distutils.command.build_ext import build_ext
+from distutils.spawn import find_executable
 
 import cross_bdist_wininst
 
@@ -39,12 +40,12 @@ PYSQLITE_EXPERIMENTAL = False
 
 sources = ["src/module.c", "src/connection.c", "src/cursor.c", "src/cache.c",
            "src/microprotocols.c", "src/prepare_protocol.c", "src/statement.c",
-           "src/util.c", "src/row.c"]
+           "src/util.c", "src/row.c", "sqlightning/sqlite3.c"]
 
 if PYSQLITE_EXPERIMENTAL:
     sources.append("src/backup.c")
 
-include_dirs = []
+include_dirs = ["sqlightning"]
 library_dirs = []
 libraries = []
 runtime_library_dirs = []
@@ -89,7 +90,37 @@ class AmalgamationBuilder(build):
 
     def __init__(self, *args, **kwargs):
         MyBuildExt.amalgamation = True
+        self._amalgamate_sqlightning()
         build.__init__(self, *args, **kwargs)
+
+    def _amalgamate_sqlightning(self):
+        # TODO python 3
+        import platform
+        vcvarsall = r'%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+        if not os.path.exists(os.path.expandvars(vcvarsall)):
+            vcvarsall = r'%COMMONPROGRAMFILES(X86)%\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+        if not os.path.exists(os.path.expandvars(vcvarsall)):
+            raise Exception('"Visual C++ for Python" not found')
+        
+        vcvars_cmd_x64 = r'call "%s" x64' %(vcvarsall)
+        vcvars_cmd_x86 = vcvars_cmd_x64 + r' && call "%s" x86' %(vcvarsall) # run vcvars_cmd_x64 first to get vcbuild.exe
+        
+        # Check for tcl
+        if not find_executable("tclsh85"):
+            raise Exception("Please ensure TCL 8.5 is installed and tclsh85 is on the path")
+        
+        currdir = os.path.abspath(os.curdir)
+        os.chdir(os.path.join(os.path.dirname(__file__),'sqlightning'))
+        if sys.platform == "win32":
+            if platform.architecture()[0] == '32bit':
+                vcvars_cmd = vcvars_cmd_x86
+            else:
+                vcvars_cmd = vcvars_cmd_x64
+            os.system("%s && nmake /f makefile.msc sqlite3.c" % vcvars_cmd)
+        else:
+            os.system("sh configure && make sqlite3.c")
+        os.chdir(currdir)
+
 
 class MyBuildExt(build_ext):
     amalgamation = False
