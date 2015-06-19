@@ -1,3 +1,7 @@
 [submodule "sqlightning"]
 	path = sqlightning
 	url = https://github.com/andrewleech/sqlightning
+[submodule "lmdb"]
+	path = lmdb
+	url = https://github.com/LMDB/lmdb.git
+	branch = mdb.RE/0.9
