@@ -312,7 +312,7 @@ static IntConstantPair _int_constants[] = {
 
 static struct PyModuleDef _sqlite3module = {
         PyModuleDef_HEAD_INIT,
-        "_sqlite3",
+        "pysqlightning._sqlite",
         NULL,
         -1,
         module_methods,
@@ -322,7 +322,7 @@ static struct PyModuleDef _sqlite3module = {
         NULL
 };
 
-PyMODINIT_FUNC PyInit__sqlite3(void)
+PyMODINIT_FUNC PyInit__sqlite(void)
 {
     PyObject *module, *dict;
     PyObject *tmp_obj;

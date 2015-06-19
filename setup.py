@@ -25,7 +25,6 @@ import glob, os, re, sys
 import urllib
 import zipfile
 import six
-
 # from distutils.core import setup, Extension, Command
 from setuptools import setup, Extension, Command
 from distutils.command.build import build
@@ -40,12 +39,19 @@ sqlite = "sqlite"
 
 PYSQLITE_EXPERIMENTAL = False
 
-sources = ["src/module.c", "src/connection.c", "src/cursor.c", "src/cache.c",
-           "src/microprotocols.c", "src/prepare_protocol.c", "src/statement.c",
-           "src/util.c", "src/row.c"]
+if six.PY2:
+    src = 'src'
+else:
+    src = 'src_py3'
+
+sources = ["module.c", "connection.c", "cursor.c", "cache.c",
+           "microprotocols.c", "prepare_protocol.c", "statement.c",
+           "util.c", "row.c"]
 
 if PYSQLITE_EXPERIMENTAL:
-    sources.append("src/backup.c")
+    sources.append("backup.c")
+
+sources = [os.path.join(src, fname) for fname in sources]
 
 include_dirs = ["sqlightning", "lmdb/libraries/liblmdb"]
 if sys.platform == "win32":
@@ -98,9 +104,8 @@ class AmalgamationBuilder(build):
         build.__init__(self, *args, **kwargs)
 
     def _amalgamate_sqlightning(self):
-        # TODO python 3
         import platform
-        if platform.python_version_tuple() >= ('3','0','0'):
+        if six.PY3:
             if not find_executable("nmake"):
                 vcvarsall = r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat'
                 vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
@@ -156,7 +161,7 @@ def get_setup_args():
     PYSQLITE_VERSION = None
 
     version_re = re.compile('#define PYSQLITE_VERSION "(.*)"')
-    f = open(os.path.join("src", "module.h"))
+    f = open(os.path.join(src, "module.h"))
     for line in f:
         match = version_re.match(line)
         if match:
