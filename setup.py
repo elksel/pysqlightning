@@ -105,27 +105,28 @@ class AmalgamationBuilder(build):
 
     def _amalgamate_sqlightning(self):
         import platform
-        if six.PY3:
-            if not find_executable("nmake"):
-                vcvarsall = r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat'
-                vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
-                vcvars_cmd_x86 = r'call "%s" x86 &&' %(vcvarsall)
+        if sys.platform == "win32":
+            if six.PY3:
+                if not find_executable("nmake"):
+                    vcvarsall = r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat'
+                    vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
+                    vcvars_cmd_x86 = r'call "%s" x86 &&' %(vcvarsall)
+                else:
+                    vcvars_cmd_x64 = ""
+                    vcvars_cmd_x86 = ""
             else:
-                vcvars_cmd_x64 = ""
-                vcvars_cmd_x86 = ""
-        else:
-            vcvarsall = r'%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
-            if not os.path.exists(os.path.expandvars(vcvarsall)):
-                vcvarsall = r'%COMMONPROGRAMFILES(X86)%\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
-            if not os.path.exists(os.path.expandvars(vcvarsall)):
-                raise Exception('"Visual C++ for Python" not found')
-            
-            vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
-            vcvars_cmd_x86 = vcvars_cmd_x64 + r' && call "%s" x86 &&' %(vcvarsall) # run vcvars_cmd_x64 first to get vcbuild.exe
+                vcvarsall = r'%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+                if not os.path.exists(os.path.expandvars(vcvarsall)):
+                    vcvarsall = r'%COMMONPROGRAMFILES(X86)%\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat'
+                if not os.path.exists(os.path.expandvars(vcvarsall)):
+                    raise Exception('"Visual C++ for Python" not found')
+                
+                vcvars_cmd_x64 = r'call "%s" x64 &&' %(vcvarsall)
+                vcvars_cmd_x86 = vcvars_cmd_x64 + r' && call "%s" x86 &&' %(vcvarsall) # run vcvars_cmd_x64 first to get vcbuild.exe
         
-        # Check for tcl
-        if not find_executable("tclsh85"):
-            raise Exception("Please ensure TCL 8.5 is installed and tclsh85 is on the path")
+            # Check for tcl
+            if not find_executable("tclsh85"):
+                raise Exception("Please ensure TCL 8.5 is installed and tclsh85 is on the path")
         
         currdir = os.path.abspath(os.curdir)
         os.chdir(os.path.join(os.path.dirname(__file__),'sqlightning'))
