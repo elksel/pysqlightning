@@ -1,7 +1,7 @@
-#-*- coding: ISO-8859-1 -*-
-# pysqlite2/test/dbapi.py: tests for DB-API compliance
+#-*- coding: iso-8859-1 -*-
+# pysqlightning/test/dbapi.py: tests for DB-API compliance
 #
-# Copyright (C) 2004-2009 Gerhard Häring <gh@ghaering.de>
+# Copyright (C) 2004-2010 Gerhard Häring <gh@ghaering.de>
 #
 # This file is part of pysqlite.
 #
@@ -22,9 +22,14 @@
 # 3. This notice may not be removed or altered from any source distribution.
 
 import unittest
-import sys
-import threading
-import pysqlite2.dbapi2 as sqlite
+import pysqlightning.dbapi2 as sqlite
+try:
+    import threading
+except ImportError:
+    threading = None
+
+from test.support import TESTFN, unlink
+
 
 class ModuleTests(unittest.TestCase):
     def CheckAPILevel(self):
@@ -41,12 +46,12 @@ class ModuleTests(unittest.TestCase):
                          sqlite.paramstyle)
 
     def CheckWarning(self):
-        self.assert_(issubclass(sqlite.Warning, StandardError),
-                     "Warning is not a subclass of StandardError")
+        self.assertTrue(issubclass(sqlite.Warning, Exception),
+                     "Warning is not a subclass of Exception")
 
     def CheckError(self):
-        self.assertTrue(issubclass(sqlite.Error, StandardError),
-                        "Error is not a subclass of StandardError")
+        self.assertTrue(issubclass(sqlite.Error, Exception),
+                        "Error is not a subclass of Exception")
 
     def CheckInterfaceError(self):
         self.assertTrue(issubclass(sqlite.InterfaceError, sqlite.Error),
@@ -82,6 +87,7 @@ class ModuleTests(unittest.TestCase):
                         "NotSupportedError is not a subclass of DatabaseError")
 
 class ConnectionTests(unittest.TestCase):
+
     def setUp(self):
         self.cx = sqlite.connect(":memory:")
         cu = self.cx.cursor()
@@ -138,6 +144,42 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(self.cx.ProgrammingError, sqlite.ProgrammingError)
         self.assertEqual(self.cx.NotSupportedError, sqlite.NotSupportedError)
 
+    def CheckInTransaction(self):
+        # Can't use db from setUp because we want to test initial state.
+        cx = sqlite.connect(":memory:")
+        cu = cx.cursor()
+        self.assertEqual(cx.in_transaction, False)
+        cu.execute("create table transactiontest(id integer primary key, name text)")
+        self.assertEqual(cx.in_transaction, False)
+        cu.execute("insert into transactiontest(name) values (?)", ("foo",))
+        self.assertEqual(cx.in_transaction, True)
+        cu.execute("select name from transactiontest where name=?", ["foo"])
+        row = cu.fetchone()
+        self.assertEqual(cx.in_transaction, True)
+        cx.commit()
+        self.assertEqual(cx.in_transaction, False)
+        cu.execute("select name from transactiontest where name=?", ["foo"])
+        row = cu.fetchone()
+        self.assertEqual(cx.in_transaction, False)
+
+    def CheckInTransactionRO(self):
+        with self.assertRaises(AttributeError):
+            self.cx.in_transaction = True
+
+    # def CheckOpenUri(self):
+    #     if sqlite.sqlite_version_info < (3, 7, 7):
+    #         with self.assertRaises(sqlite.NotSupportedError):
+    #             sqlite.connect(':memory:', uri=True)
+    #         return
+    #     self.addCleanup(unlink, TESTFN)
+    #     with sqlite.connect(TESTFN) as cx:
+    #         cx.execute('create table test(id integer)')
+    #     with sqlite.connect('file:' + TESTFN, uri=True) as cx:
+    #         cx.execute('insert into test(id) values(0)')
+    #     with sqlite.connect('file:' + TESTFN + '?mode=ro', uri=True) as cx:
+    #         with self.assertRaises(sqlite.OperationalError):
+    #             cx.execute('insert into test(id) values(1)')
+
 class CursorTests(unittest.TestCase):
     def setUp(self):
         self.cx = sqlite.connect(":memory:")
@@ -164,8 +206,8 @@ class CursorTests(unittest.TestCase):
     def CheckExecuteTooMuchSql(self):
         try:
             self.cu.execute("select 5+4; select 4+5")
-            self.fail("should have raised a ProgrammingError")
-        except sqlite.ProgrammingError:
+            self.fail("should have raised a Warning")
+        except sqlite.Warning:
             return
         except:
             self.fail("raised wrong exception")
@@ -199,6 +241,13 @@ class CursorTests(unittest.TestCase):
 
     def CheckExecuteArgString(self):
         self.cu.execute("insert into test(name) values (?)", ("Hugo",))
+
+    def CheckExecuteArgStringWithZeroByte(self):
+        self.cu.execute("insert into test(name) values (?)", ("Hu\x00go",))
+
+        self.cu.execute("select name from test where id=?", (self.cu.lastrowid,))
+        row = self.cu.fetchone()
+        self.assertEqual(row[0], "Hu\x00go")
 
     def CheckExecuteWrongNoOfArgs1(self):
         # too many parameters
@@ -250,10 +299,6 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(row[0], "foo")
 
     def CheckExecuteDictMapping_Mapping(self):
-        # Test only works with Python 2.5 or later
-        if sys.version_info < (2, 5, 0):
-            return
-
         class D(dict):
             def __missing__(self, key):
                 return "foo"
@@ -297,14 +342,14 @@ class CursorTests(unittest.TestCase):
         self.cu.execute("update test set name='bar'")
         self.assertEqual(self.cu.rowcount, 2)
 
-    def CheckRowcountSelect(self):
-        """
-        pysqlite does not know the rowcount of SELECT statements, because we
-        don't fetch all rows after executing the select statement. The rowcount
-        has thus to be -1.
-        """
-        self.cu.execute("select 5 union select 6")
-        self.assertEqual(self.cu.rowcount, -1)
+    # def CheckRowcountSelect(self):
+    #     """
+    #     pysqlite does not know the rowcount of SELECT statements, because we
+    #     don't fetch all rows after executing the select statement. The rowcount
+    #     has thus to be -1.
+    #     """
+    #     self.cu.execute("select 5 union select 6")
+    #     self.assertEqual(self.cu.rowcount, -1)
 
     def CheckRowcountExecutemany(self):
         self.cu.execute("delete from test")
@@ -329,7 +374,7 @@ class CursorTests(unittest.TestCase):
             def __init__(self):
                 self.value = 5
 
-            def next(self):
+            def __next__(self):
                 if self.value == 10:
                     raise StopIteration
                 else:
@@ -369,8 +414,8 @@ class CursorTests(unittest.TestCase):
             self.fail("should have raised a TypeError")
         except TypeError:
             return
-        except Exception, e:
-            print "raised", e.__class__
+        except Exception as e:
+            print("raised", e.__class__)
             self.fail("raised wrong exception.")
 
     def CheckFetchIter(self):
@@ -465,6 +510,7 @@ class CursorTests(unittest.TestCase):
         except TypeError:
             pass
 
+@unittest.skipUnless(threading, 'This test requires threading.')
 class ThreadTests(unittest.TestCase):
     def setUp(self):
         self.con = sqlite.connect(":memory:")
@@ -642,7 +688,7 @@ class ConstructorTests(unittest.TestCase):
         ts = sqlite.TimestampFromTicks(42)
 
     def CheckBinary(self):
-        b = sqlite.Binary(chr(0) + "'")
+        b = sqlite.Binary(b"\0'")
 
 class ExtensionTests(unittest.TestCase):
     def CheckScriptStringSql(self):
@@ -657,20 +703,6 @@ class ExtensionTests(unittest.TestCase):
         cur.execute("select i from a")
         res = cur.fetchone()[0]
         self.assertEqual(res, 5)
-
-    def CheckScriptStringUnicode(self):
-        con = sqlite.connect(":memory:")
-        cur = con.cursor()
-        cur.executescript(u"""
-            create table a(i);
-            insert into a(i) values (5);
-            select i from a;
-            delete from a;
-            insert into a(i) values (6);
-            """)
-        cur.execute("select i from a")
-        res = cur.fetchone()[0]
-        self.assertEqual(res, 6)
 
     def CheckScriptSyntaxError(self):
         con = sqlite.connect(":memory:")

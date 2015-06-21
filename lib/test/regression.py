@@ -1,7 +1,7 @@
-#-*- coding: ISO-8859-1 -*-
-# pysqlite2/test/regression.py: pysqlite regression tests
+#-*- coding: iso-8859-1 -*-
+# pysqlightning/test/regression.py: pysqlite regression tests
 #
-# Copyright (C) 2006-2009 Gerhard Häring <gh@ghaering.de>
+# Copyright (C) 2006-2010 Gerhard Häring <gh@ghaering.de>
 #
 # This file is part of pysqlite.
 #
@@ -23,7 +23,7 @@
 
 import datetime
 import unittest
-import pysqlite2.dbapi2 as sqlite
+import pysqlightning.dbapi2 as sqlite
 
 class RegressionTests(unittest.TestCase):
     def setUp(self):
@@ -52,10 +52,10 @@ class RegressionTests(unittest.TestCase):
         # reset before a rollback, but only those that are still in the
         # statement cache. The others are not accessible from the connection object.
         con = sqlite.connect(":memory:", cached_statements=5)
-        cursors = [con.cursor() for x in xrange(5)]
+        cursors = [con.cursor() for x in range(5)]
         cursors[0].execute("create table test(x)")
         for i in range(10):
-            cursors[0].executemany("insert into test(x) values (?)", [(x,) for x in xrange(10)])
+            cursors[0].executemany("insert into test(x) values (?)", [(x,) for x in range(10)])
 
         for i in range(5):
             cursors[i].execute(" " * i + "select x from test")
@@ -116,18 +116,6 @@ class RegressionTests(unittest.TestCase):
         """
         self.con.execute("")
 
-    def CheckUnicodeConnect(self):
-        """
-        With pysqlite 2.4.0 you needed to use a string or a APSW connection
-        object for opening database connections.
-
-        Formerly, both bytestrings and unicode strings used to work.
-
-        Let's make sure unicode strings work in the future.
-        """
-        con = sqlite.connect(u":memory:")
-        con.close()
-
     def CheckTypeMapUsage(self):
         """
         pysqlite until 2.4.1 did not rebuild the row_cast_map when recompiling
@@ -143,6 +131,21 @@ class RegressionTests(unittest.TestCase):
         con.execute("insert into foo(bar) values (5)")
         con.execute(SELECT)
 
+    def CheckErrorMsgDecodeError(self):
+        # When porting the module to Python 3.0, the error message about
+        # decoding errors disappeared. This verifies they're back again.
+        failure = None
+        try:
+            self.con.execute("select 'xxx' || ? || 'yyy' colname",
+                             (bytes(bytearray([250])),)).fetchone()
+            failure = "should have raised an OperationalError with detailed description"
+        except sqlite.OperationalError as e:
+            msg = e.args[0]
+            if not msg.startswith("Could not decode to UTF-8 column 'colname' with text 'xxx"):
+                failure = "OperationalError did not have expected description text"
+        if failure:
+            self.fail(failure)
+
     def CheckRegisterAdapter(self):
         """
         See issue 3312.
@@ -154,12 +157,12 @@ class RegressionTests(unittest.TestCase):
         See issue 3312.
         """
         con = sqlite.connect(":memory:")
-        self.assertRaises(UnicodeEncodeError, setattr, con,
-                          "isolation_level", u"\xe9")
+        setattr(con, "isolation_level", "\xe9")
 
     def CheckCursorConstructorCallCheck(self):
         """
-        Verifies that cursor methods check wether base class __init__ was called.
+        Verifies that cursor methods check whether base class __init__ was
+        called.
         """
         class Cursor(sqlite.Cursor):
             def __init__(self, con):
@@ -175,9 +178,18 @@ class RegressionTests(unittest.TestCase):
         except:
             self.fail("should have raised ProgrammingError")
 
+
+    def CheckStrSubclass(self):
+        """
+        The Python 3.0 port of the module didn't cope with values of subclasses of str.
+        """
+        class MyStr(str): pass
+        self.con.execute("select ?", (MyStr("abc"),))
+
     def CheckConnectionConstructorCallCheck(self):
         """
-        Verifies that connection methods check wether base class __init__ was called.
+        Verifies that connection methods check whether base class __init__ was
+        called.
         """
         class Connection(sqlite.Connection):
             def __init__(self, name):
@@ -232,8 +244,7 @@ class RegressionTests(unittest.TestCase):
         Verifies that running a PRAGMA statement that does an autocommit does
         work. This did not work in 2.5.3/2.5.4.
         """
-        con = sqlite.connect(":memory:")
-        cur = con.cursor()
+        cur = self.con.cursor()
         cur.execute("create table foo(bar)")
         cur.execute("insert into foo(bar) values (5)")
 
@@ -253,11 +264,24 @@ class RegressionTests(unittest.TestCase):
             def __hash__(self):
                 raise TypeError()
         var = NotHashable()
-        con = sqlite.connect(":memory:")
-        self.assertRaises(TypeError, con.create_function, var)
-        self.assertRaises(TypeError, con.create_aggregate, var)
-        self.assertRaises(TypeError, con.set_authorizer, var)
-        self.assertRaises(TypeError, con.set_progress_handler, var)
+        self.assertRaises(TypeError, self.con.create_function, var)
+        self.assertRaises(TypeError, self.con.create_aggregate, var)
+        self.assertRaises(TypeError, self.con.set_authorizer, var)
+        self.assertRaises(TypeError, self.con.set_progress_handler, var)
+
+    def CheckConnectionCall(self):
+        """
+        Call a connection with a non-string SQL request: check error handling
+        of the statement constructor.
+        """
+        self.assertRaises(sqlite.Warning, self.con, 1)
+
+    def CheckCollation(self):
+        def collation_cb(a, b):
+            return 1
+        self.assertRaises(sqlite.ProgrammingError, self.con.create_collation,
+            # Lone surrogate cannot be encoded to the default encoding (utf8)
+            "\uDC80", collation_cb)
 
     def CheckRecursiveCursorUse(self):
         """
@@ -276,11 +300,51 @@ class RegressionTests(unittest.TestCase):
             cur.execute("insert into a (bar) values (?)", (1,))
             yield 1
 
-        try:
-            cur.executemany("insert into b (baz) values (?)", ((i,) for i in foo()))
-            self.fail("should have raised ProgrammingError")
-        except sqlite.ProgrammingError:
-            pass
+        with self.assertRaises(sqlite.ProgrammingError):
+            cur.executemany("insert into b (baz) values (?)",
+                            ((i,) for i in foo()))
+
+    def CheckConvertTimestampMicrosecondPadding(self):
+        """
+        http://bugs.python.org/issue14720
+
+        The microsecond parsing of convert_timestamp() should pad with zeros,
+        since the microsecond string "456" actually represents "456000".
+        """
+
+        con = sqlite.connect(":memory:", detect_types=sqlite.PARSE_DECLTYPES)
+        cur = con.cursor()
+        cur.execute("CREATE TABLE t (x TIMESTAMP)")
+
+        # Microseconds should be 456000
+        cur.execute("INSERT INTO t (x) VALUES ('2012-04-04 15:06:00.456')")
+
+        # Microseconds should be truncated to 123456
+        cur.execute("INSERT INTO t (x) VALUES ('2012-04-04 15:06:00.123456789')")
+
+        cur.execute("SELECT * FROM t")
+        values = [x[0] for x in cur.fetchall()]
+
+        self.assertEqual(values, [
+            datetime.datetime(2012, 4, 4, 15, 6, 0, 456000),
+            datetime.datetime(2012, 4, 4, 15, 6, 0, 123456),
+        ])
+
+    def CheckInvalidIsolationLevelType(self):
+        # isolation level is a string, not an integer
+        self.assertRaises(TypeError,
+                          sqlite.connect, ":memory:", isolation_level=123)
+
+
+    def CheckNullCharacter(self):
+        # Issue #21147
+        con = sqlite.connect(":memory:")
+        self.assertRaises(ValueError, con, "\0select 1")
+        self.assertRaises(ValueError, con, "select 1\0")
+        cur = con.cursor()
+        self.assertRaises(ValueError, cur.execute, " \0select 2")
+        self.assertRaises(ValueError, cur.execute, "select 2\0")
+
 
 def suite():
     regression_suite = unittest.makeSuite(RegressionTests, "Check")

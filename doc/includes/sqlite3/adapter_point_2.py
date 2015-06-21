@@ -1,4 +1,4 @@
-from pysqlite2 import dbapi2 as sqlite3
+from pysqlightning import dbapi2 as sqlite3
 
 class Point(object):
     def __init__(self, x, y):

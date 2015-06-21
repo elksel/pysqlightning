@@ -304,13 +304,13 @@ static IntConstantPair _int_constants[] = {
     {(char*)NULL, 0}
 };
 
-PyMODINIT_FUNC init_sqlite(void)
+PyMODINIT_FUNC init_sqlightning(void)
 {
     PyObject *module, *dict;
     PyObject *tmp_obj;
     int i;
 
-    module = Py_InitModule("pysqlite2._sqlite", module_methods);
+    module = Py_InitModule("pysqlightning._sqlightning", module_methods);
 
     if (!module ||
         (pysqlite_row_setup_types() < 0) ||
@@ -459,6 +459,6 @@ PyMODINIT_FUNC init_sqlite(void)
 error:
     if (PyErr_Occurred())
     {
-        PyErr_SetString(PyExc_ImportError, "pysqlite2._sqlite: init failed");
+        PyErr_SetString(PyExc_ImportError, "pysqlightning._sqlightning: init failed");
     }
 }

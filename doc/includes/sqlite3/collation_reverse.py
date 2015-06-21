@@ -1,4 +1,4 @@
-from pysqlite2 import dbapi2 as sqlite3
+from pysqlightning import dbapi2 as sqlite3
 
 def collate_reverse(string1, string2):
     return -cmp(string1, string2)

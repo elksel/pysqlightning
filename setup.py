@@ -70,9 +70,9 @@ It is almost fully compliant with the Python database API version 2.0 also
 exposes the unique features of SQLite."""
 
 if sys.platform != "win32":
-    define_macros.append(('MODULE_NAME', '"pysqlite2.dbapi2"'))
+    define_macros.append(('MODULE_NAME', '"pysqlightning"'))
 else:
-    define_macros.append(('MODULE_NAME', '\\"pysqlite2.dbapi2\\"'))
+    define_macros.append(('MODULE_NAME', '\\"pysqlightning\\"'))
 
 class DocBuilder(Command):
     description = "Builds the documentation"
@@ -175,11 +175,11 @@ def get_setup_args():
         six.print_("Fatal error: PYSQLITE_VERSION could not be detected!")
         sys.exit(1)
 
-    data_files = [("pysqlite2-doc",
+    data_files = [("pysqlightning-doc",
                         glob.glob("doc/*.html") \
                       + glob.glob("doc/*.txt") \
                       + glob.glob("doc/*.css")),
-                   ("pysqlite2-doc/code",
+                   ("pysqlightning-doc/code",
                         glob.glob("doc/code/*.py"))]
 
     py_modules = ["sqlite"]
@@ -197,12 +197,11 @@ def get_setup_args():
 
             # Description of the modules and packages in the distribution
             package_dir = {"pysqlightning": "lib"},
-            packages = ["pysqlightning", "pysqlightning.test"] +
-                       (["pysqlightning.test.py25"], [])[sys.version_info < (2, 5)],
+            packages = ["pysqlightning", "pysqlightning.test"],
             scripts=[],
             data_files = data_files,
 
-            ext_modules = [Extension( name="pysqlightning._sqlite",
+            ext_modules = [Extension( name="pysqlightning._sqlightning",
                                       sources=sources,
                                       include_dirs=include_dirs,
                                       library_dirs=library_dirs,

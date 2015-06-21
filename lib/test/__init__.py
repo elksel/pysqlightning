@@ -1,5 +1,5 @@
 #-*- coding: ISO-8859-1 -*-
-# pysqlite2/test/__init__.py: the package containing the test suite
+# pysqlightning/test/__init__.py: the package containing the test suite
 #
 # Copyright (C) 2004-2007 Gerhard Häring <gh@ghaering.de>
 #
@@ -25,22 +25,21 @@ import os, sys
 import unittest
 
 if os.path.exists("extended_setup.py"):
-    print "-" * 75
-    print "You should not run the test suite from the pysqlite build directory."
-    print "This does not work well because the extension module cannot be found."
-    print "Just run the test suite from somewhere else, please!"
-    print "-" * 75
+    print ("-" * 75)
+    print ("You should not run the test suite from the pysqlite build directory.")
+    print ("This does not work well because the extension module cannot be found.")
+    print ("Just run the test suite from somewhere else, please!")
+    print ("-" * 75)
     sys.exit(1)
 
-from pysqlite2.test import dbapi, types, userfunctions, factory, transactions,\
-    hooks, regression, dump
-from pysqlite2 import dbapi2 as sqlite
+from . import dbapi, types, userfunctions, factory, transactions, hooks, regression, dump
+from pysqlightning import dbapi2 as sqlite
 
 def suite():
     tests = [dbapi.suite(), types.suite(), userfunctions.suite(),
       factory.suite(), transactions.suite(), hooks.suite(), regression.suite(), dump.suite()]
-    if sys.version_info >= (2, 5, 0):
-        from pysqlite2.test.py25 import py25tests
+    if sys.version_info >= (2, 5, 0) and sys.version_info < (3, 0, 0) :
+        from pysqlightning.test.py25 import py25tests
         tests.append(py25tests.suite())
 
     return unittest.TestSuite(tuple(tests))
